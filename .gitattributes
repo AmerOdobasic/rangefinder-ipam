@@ -1,0 +1,16 @@
+# Default: auto-detect text files and normalize them to LF inside the Git repository
+* text=auto
+
+# Critical: Force strict LF on shell scripts and Linux configuration files
+# This ensures that even if a Windows teammate edits them, they won't break on Linux/VMs
+*.sh text eol=lf
+*.bash text eol=lf
+Dockerfile text eol=lf
+
+# Project source files
+*.sql text
+*.md text
+*.py text
+*.json text
+*.yml text
+*.yaml text

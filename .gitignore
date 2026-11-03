@@ -1,0 +1,9 @@
+.env
+*.log
+*.local.sql
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+node_modules/
+__pycache__/
