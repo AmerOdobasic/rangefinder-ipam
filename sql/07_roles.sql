@@ -1,7 +1,3 @@
-
--- 07_roles.sql
--- Owner: Muhib
-
 USE rangefinder;
 
 -- Create the three database roles

@@ -29,10 +29,14 @@ Everything is broken down inside `sql/` so we don't step on each others toes:
 Whenever you pull changes or want to test your script from a clean slate, run this from the project root:
 
 ```bash
-mysql -u root -p < build_all.sql
+mysql -u root -p -e "source build_all.sql"
 ```
 
+This works in bash and PowerShell. (`mysql -u root -p < build_all.sql` only works in bash, not PowerShell.) You can also open the mysql terminal and run `source build_all.sql`.
+
 The script drops and recreates `rangefinder` from scratch every time, so feel free to run it whenever you need to start fresh...
+
+The seed uses session variables (like `@loc_windsor`), so run `05_seed.sql` only through `build_all.sql`, never on its own.
 
 ## Who's doing what:
 
