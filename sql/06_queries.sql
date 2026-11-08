@@ -363,9 +363,15 @@ VALUES (960, '10.99.0.4', 'available', NULL);
 -- Expect an ERROR 1644: Cant update IP since status is available/reserved but device_id is set.
 UPDATE IP_Address SET device_id = 960 WHERE ip_address = '10.99.0.4';
 
--- Last test, 6F, will duplicate the IP Address across the database (This will fail on unique key constraint not trigger)
+-- 6F, will duplicate the IP Address across the database (This will fail on unique key constraint not trigger)
 -- Expect an ERROR 1062 (23000): Duplicate entry '10.99.0.4' for key 'ip_address.uq_ip'
 INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) 
 VALUES (960, '10.99.0.4', 'available', NULL);
+
+-- The last test 6G will UPDATE the IP to assigned with NULL device id. (the trg_ip_update_check trigger handles this)
+-- Expected to see ERROR 1644 (45000): Cant update IP because the status is assigned but device_id is NULL...
+UPDATE IP_Address
+SET status = 'assigned', device_id = NULL
+WHERE ip_address = '10.99.0.4';
 
 ROLLBACK;
