@@ -42,7 +42,7 @@ BEGIN
             SET MESSAGE_TEXT = 'sp_generate_ips: prefix length must be between /16 and /30.';
     END IF;
 
-    -- Do not generate twice for the same subnet
+    -- Makes sure to not generate twice for the same subnet
     SELECT COUNT(*) INTO v_existing
     FROM IP_Address
     WHERE subnet_id = p_subnet_id;
@@ -53,7 +53,6 @@ BEGIN
     END IF;
 
     -- Turn the dotted address into a number so we can just count up.
-    -- Block size is 2^(32 - prefix), e.g. /24 -> 256 addresses
     SET v_start = INET_ATON(v_network);
     SET v_size  = POW(2, 32 - v_prefix);
     SET v_end   = v_start + v_size - 1;
@@ -79,7 +78,7 @@ BEGIN
 
     COMMIT;
 
-    -- Show what was created
+    -- Shows what was created
     SELECT p_subnet_id AS subnet_id,
            v_size      AS total_ips_created,
            v_size - 2  AS usable_ips;
@@ -103,15 +102,14 @@ BEGIN
     DECLARE v_ip        VARCHAR(15) DEFAULT NULL;
     DECLARE v_subnet_ok INT;
 
-    -- Any error: undo everything (including a newly inserted device) and
-    -- pass the error on to the caller
+    -- Any error: undo everything (including a newly inserted device) and pass the error on to the caller
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
         RESIGNAL;
     END;
 
-    -- Check the subnet exists before opening the transaction
+    -- Checks the subnet exists before opening the transaction
     SELECT COUNT(*) INTO v_subnet_ok
       FROM Subnet
      WHERE subnet_id = p_subnet_id;
@@ -123,7 +121,7 @@ BEGIN
 
     START TRANSACTION;
 
-    -- Step a) mac_address is unique, so it identifies the device.
+    -- a) mac_address is unique, so it identifies the device.
     -- If the device already exists we reuse it instead of inserting a duplicate
     SELECT device_id INTO v_device_id
     FROM Device
@@ -136,10 +134,10 @@ BEGIN
         SET v_device_id = LAST_INSERT_ID();
     END IF;
 
-    -- Step b) lowest available address first. INET_ATON makes the sort
+    -- b) lowest available address first. INET_ATON makes the sort
     -- numeric (as text, 10.0.0.10 would come before 10.0.0.2).
     -- FOR UPDATE locks the chosen row until COMMIT, so if two people request
-    -- an IP at the same time the second one waits and then gets the next one.
+    -- an IP at the same time the second one waits and then gets the next one
     SELECT ip_id, ip_address
     INTO v_ip_id, v_ip
     FROM IP_Address
@@ -154,7 +152,7 @@ BEGIN
             SET MESSAGE_TEXT = 'sp_request_static_ip: no available IP addresses left in this subnet.';
     END IF;
 
-    -- Step c) status and device_id are set together, which is what the
+    -- c) status and device_id are set together, which is what the
     -- trg_ip_update_check trigger expects (assigned must have a device)
     UPDATE IP_Address
        SET status = 'assigned',
@@ -163,7 +161,7 @@ BEGIN
 
     COMMIT;
 
-    -- Return the result to the caller
+    -- Returns the result to the caller
     SELECT v_ip        AS assigned_ip,
            v_device_id AS device_id,
            p_hostname  AS hostname,
@@ -184,7 +182,7 @@ BEGIN
         RESIGNAL;
     END;
 
-    -- Make sure the device exists so a typo gives an error instead of
+    -- Makes sure the device exists so a typo gives an error instead of
     -- silently releasing 0 IPs
     SELECT COUNT(*) INTO v_device_ok
     FROM Device
