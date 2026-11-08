@@ -155,7 +155,6 @@ DELETE FROM VLAN WHERE vlan_id = 970;
 DELETE FROM Location WHERE location_id = 970;
 
 -- This section is about the trigger tests
--- Note that trigger tests run inside transactions rolled back at the end of each test.
 
 -- Test T1A is the Subnet delete guard (trg_subnet_delete_guard) with assigned IPs
 START TRANSACTION;
@@ -184,4 +183,189 @@ INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) VALUES (901, '
 DELETE FROM Subnet WHERE subnet_id = 901;
 SELECT COUNT(*) AS remaining_subnets FROM Subnet WHERE subnet_id = 901;
 SELECT COUNT(*) AS remaining_ips FROM IP_Address WHERE subnet_id = 901;
+ROLLBACK;
+
+START TRANSACTION;
+-- Parent fixture tests:
+INSERT INTO Location (location_id, building, room) VALUES (920, 'Test Hall', 'Room 920');
+INSERT INTO VLAN (vlan_id, vlan_name) VALUES (920, 'VLAN 920'), (921, 'VLAN 921');
+
+-- The base fixture subnets
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) VALUES
+  (920, '10.50.0.0/16', 920, 920),
+  (921, '172.16.1.0/24', 920, 920);
+
+-- For test 2A, what happens if the Subnet is entirely inside an existing subnet 
+-- Here we have 10.50.1.0/24 being inside 10.50.0.0/16
+-- We expect an ERROR 1644: Subnet CIDR overlaps with an existing subnet range!
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (922, '10.50.1.0/24', 920, 920);
+
+-- Test 2B now is if we have a subnet enclosing an existing subnet
+-- 172.16.0.0/16 encompasses 172.16.1.0/24
+-- Expect an ERROR 1644: Subnet CIDR overlaps with an existing subnet range!
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (923, '172.16.0.0/16', 920, 920);
+
+-- Test 2C is if we have adjacent subnets (will pass)?
+-- 172.16.2.0/24 begins right after 172.16.1.255...
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (924, '172.16.2.0/24', 920, 920);
+
+-- Test 2D is if the the host bits are set 
+-- 10.60.0.5 cant be a /24 network address because host bit .5 (its non-zero)
+-- We expect an ERROR 1644: The CIDR is invalid. All host bits are set...
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (925, '10.60.0.5/24', 920, 920);
+
+-- Test 2E: A badly typed IP format 
+-- 999.1.1.1 is not a valid IPv4 address; INET_ATON will return NULL here
+-- Expect to get an ERROR 1644: Wrong IPv4 address format in the CIDR block...
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (926, '999.1.1.1/24', 920, 920);
+
+-- Test 2F; Update to the same CIDR or non-CIDR column (this should pass)
+-- We have to make sure here not to trigger a false-positive self-overlap collision...
+UPDATE Subnet SET vlan_id = 921 WHERE subnet_id = 924;
+
+-- 2G test will cover if an update will expand into an existing subnet 
+-- If we expand 924 from 172.16.2.0/24 to 172.16.0.0/22, it will collide with 172.16.1.0/24
+-- Expect: ERROR 1644: Subnet CIDR overlaps with an existing subnet range!
+UPDATE Subnet SET cidr_block = '172.16.0.0/22' WHERE subnet_id = 924;
+
+ROLLBACK;
+
+-- Test 3: We need to be sure that deleting a device releases its assigned IPs
+
+START TRANSACTION;
+INSERT INTO Location (location_id, building, room) VALUES (930, 'Test Hall', 'Room 930');
+INSERT INTO VLAN (vlan_id, vlan_name) VALUES (930, 'VLAN 930');
+INSERT INTO Device (device_id, hostname, mac_address, device_type) 
+VALUES (930, 'server-del.local', '00:11:22:33:44:30', 'Server');
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (930, '10.70.0.0/24', 930, 930);
+
+-- We need to assign TWO IP addresses to the same device:
+INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) VALUES 
+  (930, '10.70.0.10', 'assigned', 930),
+  (930, '10.70.0.11', 'assigned', 930);
+
+-- Delete the device
+DELETE FROM Device WHERE device_id = 930;
+
+-- Lets confirm that both rows must now have status = 'available' and device_id IS NULL
+SELECT ip_address, status, device_id 
+FROM IP_Address 
+WHERE ip_address IN ('10.70.0.10', '10.70.0.11');
+
+ROLLBACK;
+
+-- Test 4 - We need to prevent the direct reassignment of an assigned IP (the trg_ip_update_check trigger)
+
+START TRANSACTION;
+INSERT INTO Location (location_id, building, room) VALUES (940, 'Test Hall', 'Room 940');
+INSERT INTO VLAN (vlan_id, vlan_name) VALUES (940, 'VLAN 940');
+INSERT INTO Device (device_id, hostname, mac_address, device_type) VALUES
+  (940, 'server-a.local', '00:11:22:33:44:40', 'Server'),
+  (941, 'server-b.local', '00:11:22:33:44:41', 'Server');
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (940, '10.80.0.0/24', 940, 940);
+
+INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) 
+VALUES (940, '10.80.0.5', 'assigned', 940);
+
+-- For the first test, 4A, lets direct the reassignment from Device 940 to 941 
+-- We expect here an ERROR 1644: Cant reassign the IP since the address is already assigned to another device. Please release it first!
+UPDATE IP_Address SET device_id = 941 WHERE ip_address = '10.80.0.5';
+
+-- Test 4B is done in 2 steps: Release first, then assign (this will pass)
+UPDATE IP_Address SET status = 'available', device_id = NULL WHERE ip_address = '10.80.0.5';
+UPDATE IP_Address SET status = 'assigned', device_id = 941 WHERE ip_address = '10.80.0.5';
+
+-- Verification...
+SELECT ip_address, status, device_id FROM IP_Address WHERE ip_address = '10.80.0.5';
+
+ROLLBACK;
+
+-- For test 5, we show that moving a device across locations releases its IPs (the trg_device_move_release_ips trigger)
+START TRANSACTION;
+-- First setup two distinct locations
+INSERT INTO Location (location_id, building, room) VALUES 
+  (950, 'Building A', 'Server Room 1'),
+  (951, 'Building B', 'Server Room 2');
+
+INSERT INTO VLAN (vlan_id, vlan_name) VALUES (950, 'VLAN 950');
+
+-- For our racks, 950 & 951 are in Location 950 and Rack 952 is in Location 951
+INSERT INTO Rack (rack_id, location_id, rack_label) VALUES
+  (950, 950, 'Rack-A1'), 
+  (951, 950, 'Rack-A2'), 
+  (952, 951, 'Rack-B1');
+
+INSERT INTO Device (device_id, hostname, mac_address, device_type, rack_id)
+VALUES (950, 'relocating-host.local', '00:11:22:33:44:50', 'Server', 950);
+
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (950, '10.90.0.0/24', 950, 950);
+
+INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) 
+VALUES (950, '10.90.0.5', 'assigned', 950);
+
+-- For the first test, lets move within the SAME location (so from Rack 950 to Rack 951)
+-- Expected is that the IP remains 'assigned' to Device 950
+UPDATE Device SET rack_id = 951 WHERE device_id = 950;
+SELECT ip_address, status, device_id FROM IP_Address WHERE ip_address = '10.90.0.5';
+
+-- The second test is to un-rack device (going from Rack 951 to NULL)
+-- Expect that the IP remains 'assigned' (unracking for maintenance does not remove its IP)
+UPDATE Device SET rack_id = NULL WHERE device_id = 950;
+SELECT ip_address, status, device_id FROM IP_Address WHERE ip_address = '10.90.0.5';
+
+-- Re-attach to Rack 950 to test cross location move
+UPDATE Device SET rack_id = 950 WHERE device_id = 950;
+
+-- Third test is to move across DIFFERENT locations (Rack 950 in Location 950 to Rack 952 in Location 951)
+-- We expect that the IP status changes to 'available' and the device_id becomes NULL
+UPDATE Device SET rack_id = 952 WHERE device_id = 950;
+SELECT ip_address, status, device_id FROM IP_Address WHERE ip_address = '10.90.0.5';
+
+ROLLBACK;
+
+-- TestT6: Looking at duplicate IP and invalid status/device combos..
+START TRANSACTION;
+INSERT INTO Location (location_id, building, room) VALUES (960, 'Test Hall', 'Room 960');
+INSERT INTO VLAN (vlan_id, vlan_name) VALUES (960, 'VLAN 960');
+INSERT INTO Device (device_id, hostname, mac_address, device_type) 
+VALUES (960, 'combo-host.local', '00:11:22:33:44:60', 'Server');
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
+VALUES (960, '10.99.0.0/24', 960, 960);
+
+-- For test 6A, Assigned that has a NULL device_id 
+-- Expect an ERROR 1644: Cant insert IP since status is assigned but device_id is NULL!
+INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) 
+VALUES (960, '10.99.0.1', 'assigned', NULL);
+
+-- Test 6B checks Available with device_id thats not null..
+-- Expect: ERROR 1644: Cannot insert IP since status is available/reserved but device_id is set!
+INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) 
+VALUES (960, '10.99.0.2', 'available', 960);
+
+-- Test 6C, Reserved with non-NULL device_id 
+-- Expect an ERROR 1644: Cannot insert IP since status is available/reserved but device_id is set!
+INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) 
+VALUES (960, '10.99.0.3', 'reserved', 960);
+
+-- Test 6D, a valid baseline insertion
+INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) 
+VALUES (960, '10.99.0.4', 'available', NULL);
+
+-- Test 6E, Update the IP to an invalid combo 
+-- Expect an ERROR 1644: Cant update IP since status is available/reserved but device_id is set.
+UPDATE IP_Address SET device_id = 960 WHERE ip_address = '10.99.0.4';
+
+-- Last test, 6F, will duplicate the IP Address across the database (This will fail on unique key constraint not trigger)
+-- Expect an ERROR 1062 (23000): Duplicate entry '10.99.0.4' for key 'ip_address.uq_ip'
+INSERT INTO IP_Address (subnet_id, ip_address, status, device_id) 
+VALUES (960, '10.99.0.4', 'available', NULL);
+
 ROLLBACK;
