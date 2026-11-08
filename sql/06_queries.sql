@@ -375,3 +375,153 @@ SET status = 'assigned', device_id = NULL
 WHERE ip_address = '10.99.0.4';
 
 ROLLBACK;
+
+
+-- First set up the shared parent fixtures for these tests (ids in the 990s)
+-- Subnet 991 is a /29 (usable .1 to .6), 992 is a /28 (usable .1 to .14) and 993 is a /30 (usable .1 and .2 only)
+INSERT INTO Location (location_id, building, room) VALUES (990, 'Proc Test Hall 2', 'Room 990');
+INSERT INTO VLAN (vlan_id, vlan_name) VALUES (990, 'Proc Test VLAN 990');
+INSERT INTO Rack (rack_id, location_id, rack_label, total_units) VALUES (990, 990, 'Proc-R01', 42);
+INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) VALUES
+    (991, '10.97.0.0/29', 990, 990),
+    (992, '10.97.1.0/28', 990, 990),
+    (993, '10.97.2.0/30', 990, 990);
+CALL sp_generate_ips(991);
+CALL sp_generate_ips(992);
+CALL sp_generate_ips(993);
+
+
+-- Test R1 looks at a new device getting created and receiving the lowest free IP
+-- We expect assigned_ip = 10.97.0.1 and a new device_id
+CALL sp_request_static_ip(991, 'proc-dev1', '02:00:00:00:99:01', 'Server', 990, 2);
+-- Verification: there should be one new Device row (rack_id = 990 and rack_units = 2)
+SELECT device_id, hostname, device_type, rack_units, rack_id FROM Device WHERE mac_address = '02:00:00:00:99:01';
+
+
+-- Test R2 is the next device that will be getting the next IP
+-- We expect assigned_ip = 10.97.0.2
+CALL sp_request_static_ip(991, 'proc-dev2', '02:00:00:00:99:02', 'Server', 990, 4);
+
+
+-- Test R3 looks at the next IP being picked numerically instead of as text
+-- As text 10.97.1.10 would sort before 10.97.1.2, so a text sort would give .10 for the second device
+-- We expect the first call to give 10.97.1.1 and the second call to give 10.97.1.2
+CALL sp_request_static_ip(992, 'proc-dev11', '02:00:00:00:99:11', 'Server', NULL, NULL);
+CALL sp_request_static_ip(992, 'proc-dev12', '02:00:00:00:99:12', 'Server', NULL, NULL);
+
+
+-- Test R4 is a full subnet being rejected (subnet 993 only has 2 usable IPs)
+-- We expect the 1st and 2nd call to give 10.97.2.1 and 10.97.2.2
+-- We want ERROR 1644 (45000): sp_request_static_ip: no available IP addresses left in this subnet. for the 3rd call
+CALL sp_request_static_ip(993, 'proc-dev21', '02:00:00:00:99:21', 'Server', NULL, NULL);
+CALL sp_request_static_ip(993, 'proc-dev22', '02:00:00:00:99:22', 'Server', NULL, NULL);
+CALL sp_request_static_ip(993, 'proc-dev23', '02:00:00:00:99:23', 'Server', NULL, NULL);
+--Verification: orphan_devices should be 0 (the rollback also removed the new Device row)
+SELECT COUNT(*) AS orphan_devices FROM Device WHERE mac_address = '02:00:00:00:99:23';
+
+
+-- Test R5A is a duplicate MAC address being inserted directly into Device
+-- We want ERROR 1062 (23000): Duplicate entry '02:00:00:00:99:01' for key 'device.uq_device_mac' (the unique key rejects it)
+INSERT INTO Device (hostname, mac_address, device_type) VALUES ('proc-dev1-copy', '02:00:00:00:99:01', 'Server');
+-- Verification: device_rows should still be 1
+SELECT COUNT(*) AS device_rows FROM Device WHERE mac_address = '02:00:00:00:99:01';
+
+
+-- Test R5B is the same MAC address going through the procedure instead
+-- The procedure does not reject a known MAC, it reuses the existing device and gives it another IP
+-- We expect assigned_ip = 10.97.0.3 and the same device_id as proc-dev1 (no error and no second Device row)
+CALL sp_request_static_ip(991, 'proc-dev1-again', '02:00:00:00:99:01', 'Server', 990, 2);
+-- Verification: one row, the hostname is still proc-dev1 (not renamed) and ips = 10.97.0.1,10.97.0.3
+SELECT d.device_id, d.hostname,
+       GROUP_CONCAT(ip.ip_address ORDER BY INET_ATON(ip.ip_address)) AS ips
+FROM Device d
+JOIN IP_Address ip ON ip.device_id = d.device_id
+WHERE d.mac_address = '02:00:00:00:99:01'
+GROUP BY d.device_id, d.hostname;
+
+
+-- Test R6 is the nonexistent subnet ID lookup
+-- We want ERROR 1644 (45000): sp_request_static_ip: subnet_id does not exist.
+CALL sp_request_static_ip(999999, 'proc-ghost', '02:00:00:00:99:31', 'Server', NULL, NULL);
+-- Verification: orphan_devices should be 0
+SELECT COUNT(*) AS orphan_devices FROM Device WHERE mac_address = '02:00:00:00:99:31';
+
+
+-- Test R7 looks at a bad rack_id failing without assigning anything
+-- We want ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (Device.rack_id)
+CALL sp_request_static_ip(991, 'proc-badrack', '02:00:00:00:99:32', 'Server', 999999, 2);
+-- Verification: orphan_devices should be 0 and assigned_in_991 should stay 3 (proc-dev1 has .1 and .3, proc-dev2 has .2)
+SELECT COUNT(*) AS orphan_devices FROM Device WHERE mac_address = '02:00:00:00:99:32';
+SELECT COUNT(*) AS assigned_in_991 FROM IP_Address WHERE subnet_id = 991 AND status = 'assigned';
+
+
+-- Test L1 is the release giving back all of a device's IPs while keeping the device
+-- We expect ips_released = 2
+SET @proc_dev1 = (SELECT device_id FROM Device WHERE mac_address = '02:00:00:00:99:01');
+CALL sp_release_device_ips(@proc_dev1);
+-- Verification: 10.97.0.1 and 10.97.0.3 should now be 'available' with device_id NULL
+-- and 10.97.0.2 should still be 'assigned' to proc-dev2
+SELECT ip_address, status, device_id FROM IP_Address
+WHERE subnet_id = 991 AND ip_address IN ('10.97.0.1', '10.97.0.2', '10.97.0.3')
+ORDER BY INET_ATON(ip_address);
+-- The device itself should still exist (device_still_exists = 1)
+SELECT COUNT(*) AS device_still_exists FROM Device WHERE device_id = @proc_dev1;
+
+
+-- Test L2 is the lowest freed address being handed out again
+-- Expected: assigned_ip = 10.97.0.1
+CALL sp_request_static_ip(991, 'proc-dev4', '02:00:00:00:99:04', 'Server', 990, 1);
+
+
+-- Test L3 is releasing a device that has no IPs (this should not be an error)
+-- Expected: ips_released = 0
+INSERT INTO Device (hostname, mac_address, device_type) VALUES ('proc-noip', '02:00:00:00:99:05', 'Patch Panel');
+SET @proc_noip = (SELECT device_id FROM Device WHERE mac_address = '02:00:00:00:99:05');
+CALL sp_release_device_ips(@proc_noip);
+
+
+-- Test L4 is the nonexistent device ID lookup
+-- Expected: ERROR 1644 (45000): sp_release_device_ips: device_id does not exist.
+CALL sp_release_device_ips(999999);
+
+
+-- Get rid of the stored procedure fixtures. The devices go first (the delete trigger frees their IPs,
+-- so the subnet delete guard lets the subnets go), then the subnets, rack, VLAN and location
+DELETE FROM Device WHERE mac_address LIKE '02:00:00:00:99:%';
+DELETE FROM Subnet WHERE subnet_id IN (991, 992, 993);
+DELETE FROM Rack WHERE rack_id = 990;
+DELETE FROM VLAN WHERE vlan_id = 990;
+DELETE FROM Location WHERE location_id = 990;
+
+
+-- View demo 1: v_subnet_utilization (total, assigned and available IPs per subnet)
+-- Expected with the seed data:
+-- 10.1.10.0/24: 256 total, 20 assigned, 234 available, 91.41 percent available
+-- 10.1.11.0/28: 16 total, 13 assigned, 1 available, 6.25 percent available (the busy one)
+-- 10.2.20.0/24: 256 total, 6 assigned, 248 available, 96.88 percent available
+SELECT * FROM v_subnet_utilization;
+
+
+-- View demo 2: v_vlan_utilization (the same totals rolled up per VLAN)
+-- Expected with the seed data:
+-- VLAN 10 Servers: 272 total (the /24 and the /28), 33 assigned, 235 available, 86.40 percent
+-- VLAN 20 Management: 256 total, 6 assigned, 248 available, 96.88 percent
+-- VLAN 30 Guest WiFi and VLAN 40 IoT: 0 everywhere and a NULL percent (no subnets yet)
+SELECT * FROM v_vlan_utilization;
+
+
+-- View demo 3: v_rack_space (total, used and free units per rack)
+-- Expected with the seed data:
+-- W-R01: 18 used, 24 free
+-- W-R02: 38 used, 4 free (nearly full)
+-- T-R01: 15 used, 27 free
+-- T-R02: 0 used, 42 free (empty)
+SELECT * FROM v_rack_space;
+
+
+-- View demo 4: v_location_rack_space (rack space rolled up per location)
+-- Expected with the seed data:
+-- Windsor Data Center: 84 total, 56 used, 28 free
+-- Toronto Bank Site: 84 total, 15 used, 69 free
+-- Calgary Branch Office: 0 in every column (it has no racks, but it still shows up)
+SELECT * FROM v_location_rack_space;
