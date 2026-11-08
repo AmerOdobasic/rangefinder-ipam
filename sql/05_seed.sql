@@ -134,7 +134,7 @@ JOIN (
     SELECT '10.1.10.10', 'san01'    UNION ALL
     SELECT '10.1.10.11', 'db01'     UNION ALL
     SELECT '10.1.10.12', 'db02'     UNION ALL
-    SELECT '10.1.10.13', 'backup01' UNION ALL
+    SELECT '10.1.10.13', 'db01' UNION ALL
     SELECT '10.1.10.14', 'fw01'     UNION ALL
     SELECT '10.1.10.15', 'db01'     UNION ALL   -- second addresses for devices with two interfaces
     SELECT '10.1.10.16', 'db02'     UNION ALL
@@ -147,15 +147,15 @@ JOIN Device d ON d.hostname = m.host
 SET ip.status = 'assigned', ip.device_id = d.device_id
 WHERE ip.subnet_id = @sn_servers;
 
--- 10.2.20.0/24 (Management, Toronto): network gear plus the management addresses of a few servers
+-- 10.2.20.0/24 (Management, Toronto): only devices racked in Toronto, so the core switches get a second address each
 UPDATE IP_Address ip
 JOIN (
     SELECT '10.2.20.1' AS ip_addr, 'sw-core01' AS host UNION ALL
     SELECT '10.2.20.2', 'sw-core02' UNION ALL
     SELECT '10.2.20.3', 'rtr01'     UNION ALL
     SELECT '10.2.20.4', 'backup01'  UNION ALL
-    SELECT '10.2.20.5', 'db01'      UNION ALL
-    SELECT '10.2.20.6', 'db02'
+    SELECT '10.2.20.5', 'sw-core01'      UNION ALL
+    SELECT '10.2.20.6', 'sw-core02'
 ) m ON m.ip_addr = ip.ip_address
 JOIN Device d ON d.hostname = m.host
 SET ip.status = 'assigned', ip.device_id = d.device_id

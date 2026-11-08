@@ -467,7 +467,7 @@ CALL sp_request_static_ip(992, 'proc-dev12', '02:00:00:00:99:12', 'Server', NULL
 CALL sp_request_static_ip(993, 'proc-dev21', '02:00:00:00:99:21', 'Server', NULL, NULL);
 CALL sp_request_static_ip(993, 'proc-dev22', '02:00:00:00:99:22', 'Server', NULL, NULL);
 CALL sp_request_static_ip(993, 'proc-dev23', '02:00:00:00:99:23', 'Server', NULL, NULL);
---Verification: orphan_devices should be 0 (the rollback also removed the new Device row)
+-- Verification: orphan_devices should be 0 (the rollback also removed the new Device row)
 SELECT COUNT(*) AS orphan_devices FROM Device WHERE mac_address = '02:00:00:00:99:23';
 
 
@@ -499,7 +499,8 @@ SELECT COUNT(*) AS orphan_devices FROM Device WHERE mac_address = '02:00:00:00:9
 
 
 -- Test R7 looks at a bad rack_id failing without assigning anything
--- We want ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails (Device.rack_id)
+--  We want ERROR 1452 (23000): Cannot add or update a child row: a foreign key constraint fails
+-- (`rangefinder`.`device`, CONSTRAINT `fk_device_rack` FOREIGN KEY (`rack_id`) REFERENCES `rack` (`rack_id`) ON DELETE SET NULL ON UPDATE CASCADE)
 CALL sp_request_static_ip(991, 'proc-badrack', '02:00:00:00:99:32', 'Server', 999999, 2);
 -- Verification: orphan_devices should be 0 and assigned_in_991 should stay 3 (proc-dev1 has .1 and .3, proc-dev2 has .2)
 SELECT COUNT(*) AS orphan_devices FROM Device WHERE mac_address = '02:00:00:00:99:32';
