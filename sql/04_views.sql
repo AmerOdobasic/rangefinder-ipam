@@ -1,5 +1,3 @@
--- 04_views.sql  
--- Owner: Marc
 USE rangefinder;
 
 -- 1. v_subnet_utilization

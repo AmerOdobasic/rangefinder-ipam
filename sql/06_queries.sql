@@ -1,6 +1,3 @@
--- 06_queries.sql  
--- Owners: Amer and Marc
--- This includes the demo and verification file (excluded from build_all.sql)
 USE rangefinder;
 
 /*
@@ -12,11 +9,20 @@ USE rangefinder;
   - If a run stops midway, the trailing DELETE cleanups won't run. If the test data 
   gets stuck behind, just rerun build_all.sql to reset the database
 */
-
 -- This section covers some analytical queries
-
 -- Query 1: Subnets above 80% IP address utilization
 SELECT 
+    s.subnet_id, s.cidr_block,
+    COUNT(ip.ip_id) AS total_ips,
+    SUM(CASE WHEN ip.status = 'assigned' THEN 1 ELSE 0 END) AS assigned_ips,
+    ROUND((SUM(CASE WHEN ip.status = 'assigned' THEN 1 ELSE 0 END) / COUNT(ip.ip_id)) * 100, 2) AS utilization_pct
+FROM Subnet s
+JOIN IP_Address ip ON s.subnet_id = ip.subnet_id
+GROUP BY s.subnet_id, s.cidr_block
+HAVING utilization_pct > 80.00
+ORDER BY utilization_pct DESC;
+
+EXPLAIN SELECT 
     s.subnet_id, s.cidr_block,
     COUNT(ip.ip_id) AS total_ips,
     SUM(CASE WHEN ip.status = 'assigned' THEN 1 ELSE 0 END) AS assigned_ips,
@@ -35,8 +41,25 @@ LEFT JOIN IP_Address ip ON d.device_id = ip.device_id
 WHERE ip.ip_id IS NULL
 ORDER BY d.device_id ASC;
 
+EXPLAIN SELECT 
+    d.device_id, d.hostname, d.mac_address, d.device_type
+FROM Device d
+LEFT JOIN IP_Address ip ON d.device_id = ip.device_id
+WHERE ip.ip_id IS NULL
+ORDER BY d.device_id ASC;
+
 -- Query 3: Racks with the least amount of free space remaining
 SELECT 
+    r.rack_id, r.rack_label, l.building, l.room, r.total_units,
+    COALESCE(SUM(d.rack_units), 0) AS used_units,
+    (r.total_units - COALESCE(SUM(d.rack_units), 0)) AS free_units
+FROM Rack r
+JOIN Location l ON r.location_id = l.location_id
+LEFT JOIN Device d ON r.rack_id = d.rack_id
+GROUP BY r.rack_id, r.rack_label, l.building, l.room, r.total_units
+ORDER BY free_units ASC, r.rack_id ASC;
+
+EXPLAIN SELECT 
     r.rack_id, r.rack_label, l.building, l.room, r.total_units,
     COALESCE(SUM(d.rack_units), 0) AS used_units,
     (r.total_units - COALESCE(SUM(d.rack_units), 0)) AS free_units
@@ -57,6 +80,16 @@ WHERE ip.status = 'assigned'
 GROUP BY v.vlan_id, v.vlan_name
 ORDER BY assigned_ip_count DESC;
 
+EXPLAIN SELECT 
+    v.vlan_id, v.vlan_name,
+    COUNT(ip.ip_id) AS assigned_ip_count
+FROM VLAN v
+JOIN Subnet s ON v.vlan_id = s.vlan_id
+JOIN IP_Address ip ON s.subnet_id = ip.subnet_id
+WHERE ip.status = 'assigned'
+GROUP BY v.vlan_id, v.vlan_name
+ORDER BY assigned_ip_count DESC;
+
 -- Query 5: Total devices located in each physical location
 SELECT 
     l.location_id, l.building, l.room,
@@ -67,8 +100,26 @@ LEFT JOIN Device d ON r.rack_id = d.rack_id
 GROUP BY l.location_id, l.building, l.room
 ORDER BY device_count DESC, l.location_id ASC;
 
+EXPLAIN SELECT 
+    l.location_id, l.building, l.room,
+    COUNT(d.device_id) AS device_count
+FROM Location l
+LEFT JOIN Rack r ON l.location_id = r.location_id
+LEFT JOIN Device d ON r.rack_id = d.rack_id
+GROUP BY l.location_id, l.building, l.room
+ORDER BY device_count DESC, l.location_id ASC;
+
 -- Query 6: Next available IP address per subnet (the lowest numeric IP is marked 'available')
 SELECT 
+    s.subnet_id, s.cidr_block,
+    INET_NTOA(MIN(INET_ATON(ip.ip_address))) AS next_available_ip
+FROM Subnet s
+JOIN IP_Address ip ON s.subnet_id = ip.subnet_id
+WHERE ip.status = 'available'
+GROUP BY s.subnet_id, s.cidr_block
+ORDER BY s.subnet_id ASC;
+
+EXPLAIN SELECT 
     s.subnet_id, s.cidr_block,
     INET_NTOA(MIN(INET_ATON(ip.ip_address))) AS next_available_ip
 FROM Subnet s
@@ -219,8 +270,8 @@ INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id)
 VALUES (925, '10.60.0.5/24', 920, 920);
 
 -- Test 2E: A badly typed IP format 
--- 999.1.1.1 is not a valid IPv4 address; INET_ATON will return NULL here
--- Expect to get an ERROR 1644: Wrong IPv4 address format in the CIDR block...
+-- 999.1.1.1 is not a valid IPv4 address
+-- Expect to get an ERROR 1411 (HY000): Incorrect string value: 'v_new_net@0' for function inet_aton
 INSERT INTO Subnet (subnet_id, cidr_block, vlan_id, location_id) 
 VALUES (926, '999.1.1.1/24', 920, 920);
 

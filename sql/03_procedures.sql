@@ -1,5 +1,3 @@
--- 03_procedures.sql
--- Owner: Marc
 USE rangefinder;
 
 DROP PROCEDURE IF EXISTS sp_generate_ips;

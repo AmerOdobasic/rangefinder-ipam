@@ -1,5 +1,3 @@
--- 02_triggers.sql
--- Owner: Amer
 USE rangefinder;
 
 -- Subnet delete guard:
