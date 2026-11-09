@@ -10,6 +10,16 @@ CREATE ROLE IF NOT EXISTS
 GRANT SELECT, INSERT, UPDATE, DELETE
 ON rangefinder.*
 TO 'network_administrator';
+-- Network Administrator: execute all stored procedures (CRUD alone does not
+-- include EXECUTE, so without this the admin could not call any of them)
+GRANT EXECUTE
+ON rangefinder.*
+TO 'network_administrator';
+
+-- Read-Only Auditor: SELECT only (tables and the four reporting views)
+GRANT SELECT
+ON rangefinder.*
+TO 'read_only_auditor';
 
 -- Systems Engineer: SELECT on all tables
 GRANT SELECT
@@ -24,6 +34,14 @@ TO 'systems_engineer';
 -- Systems Engineer: execute stored procedures
 GRANT EXECUTE
 ON PROCEDURE rangefinder.sp_generate_ips
+TO 'systems_engineer';
+
+GRANT EXECUTE
+ON PROCEDURE rangefinder.sp_request_static_ip
+TO 'systems_engineer';
+
+GRANT EXECUTE
+ON PROCEDURE rangefinder.sp_release_device_ips
 TO 'systems_engineer';
 
 
