@@ -20,7 +20,7 @@ Everything is broken down inside `sql/` so we don't step on each others toes:
 - `sql/03_procedures.sql` – Stored procedures
 - `sql/04_views.sql` – reporting views
 - `sql/05_seed.sql` – Mock records and test data
-- `sql/06_queries.sql` – Demo and test queries (run this separately)
+- `sql/06_queries.sql` – Demo and test queries. **Not part of the build.** Some tests are meant to give errors, so run it block by block, or with `mysql --force`. These tests commit internally and clean up with DELETE statements
 - `sql/07_roles.sql` – Users, role groups, and GRANT statements
 - `build_all.sql` – Runner script that builds everything cleanly
 
@@ -50,6 +50,5 @@ The seed uses session variables (like `@loc_windsor`), so run `05_seed.sql` only
 
 - Stick to the files you own. If you need something changed in someone else's file, let them know on Discord
 - `git pull` before you start and before you push. Remember to commit small, with a clear message for them to let everyone else know what you've done
-- Pull before you start working and right before you push. Keep commits small with meaningful messages so conflicts are easy to see
 - Any time `01_schema.sql` gets changed, keep a quick note of what changed so we can drop it straight into the Step 4 "Changes from Previous Submission" section.
 - Make sure that `.env` contains nothing thats actually sensitive
