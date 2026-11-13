@@ -7,3 +7,9 @@ Thumbs.db
 .vscode/
 node_modules/
 __pycache__/
+venv/
+*.pyc
+.venv/
+env/
+.env.*
+!.env.example
