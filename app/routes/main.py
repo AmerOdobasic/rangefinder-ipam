@@ -27,7 +27,7 @@ def logout():
     flash("Logged out.", "success")
     return redirect(url_for("main.login"))
 
-
+# TODO: makes sure that this is removed before submisson since this allows anyone to log in as any role by just clicking the URL
 @bp.route("/dev-login/<key>")
 def dev_login(key):
     if not current_app.debug or key not in DEV_ROLES:
