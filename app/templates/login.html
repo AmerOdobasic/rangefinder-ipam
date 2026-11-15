@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<h1>Log in</h1>
+{% if config.DEBUG %}
+  <p>Dev shortcuts:</p>
+  <ul>
+    <li><a href="/dev-login/admin">Network Administrator</a></li>
+    <li><a href="/dev-login/engineer">Systems Engineer</a></li>
+    <li><a href="/dev-login/auditor">Read-Only Auditor</a></li>
+  </ul>
+{% endif %}
+{% endblock %}
