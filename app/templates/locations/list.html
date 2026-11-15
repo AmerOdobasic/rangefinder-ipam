@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Locations{% endblock %}
+{% block content %}
+<h1>Locations</h1>
+{% if is_admin %}<a class="btn" href="{{ url_for('locations.create_location') }}">+ New location</a>{% endif %}
+<table>
+  <thead>
+    <tr><th>Building</th><th>Room</th><th>Description</th>{% if is_admin %}<th>Actions</th>{% endif %}</tr>
+  </thead>
+  <tbody>
+  {% for loc in locations %}
+    <tr>
+      <td>{{ loc.building }}</td>
+      <td>{{ loc.room }}</td>
+      <td>{{ loc.description }}</td>
+      {% if is_admin %}
+      <td>
+        <a class="btn" href="{{ url_for('locations.edit_location', location_id=loc.location_id) }}">Edit</a>
+        <form method="post" style="display:inline"
+              action="{{ url_for('locations.delete_location', location_id=loc.location_id) }}"
+              onsubmit="return confirm('Delete this location?');">
+          <button class="danger">Delete</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+  {% else %}
+    <tr><td colspan="4">No locations yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

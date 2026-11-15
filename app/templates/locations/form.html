@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Location{% endblock %}
+{% block content %}
+<h1>{{ 'Edit' if location and location.location_id else 'New' }} location</h1>
+<form method="post">
+  <label>Building
+    <input name="building" required value="{{ location.building if location else '' }}">
+  </label>
+  <label>Room
+    <input name="room" required value="{{ location.room if location else '' }}">
+  </label>
+  <label>Description
+    <input name="description" value="{{ location.description if location else '' }}">
+  </label>
+  <button>Save</button>
+  <a href="{{ url_for('locations.list_locations') }}">Cancel</a>
+</form>
+{% endblock %}
