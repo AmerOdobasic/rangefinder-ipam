@@ -30,3 +30,43 @@ def close_db(e=None):
     db = g.pop("db", None)
     if db is not None:
         db.close()
+
+def query_all(sql, params=()):
+    cur = get_db().cursor(dictionary=True)
+    try:
+        cur.execute(sql, params)
+        return cur.fetchall()
+    finally:
+        cur.close()
+
+
+def query_one(sql, params=()):
+    rows = query_all(sql, params)
+    return rows[0] if rows else None
+
+
+def execute(sql, params=()):
+    db = get_db()
+    cur = db.cursor()
+    try:
+        cur.execute(sql, params)
+        db.commit()
+        return cur.lastrowid
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        cur.close()
+
+
+def call_proc(name, args=()):
+    cur = get_db().cursor()
+    try:
+        cur.callproc(name, args)
+        results = []
+        for result in cur.stored_results():
+            cols = result.column_names
+            results.extend(dict(zip(cols, row)) for row in result.fetchall())
+        return results
+    finally:
+        cur.close()
