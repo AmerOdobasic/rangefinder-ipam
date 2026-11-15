@@ -1,0 +1,96 @@
+body {
+    font-family: system-ui, sans-serif;
+    margin: 0;
+    color: #222;
+}
+
+nav {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: .75rem 1.5rem;
+    background: #1f3a5f;
+    color: #fff;
+}
+
+nav a {
+    color: #fff;
+    text-decoration: none;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+.spacer {
+    flex: 1;
+}
+
+main {
+    max-width: 1000px;
+    margin: 1.5rem auto;
+    padding: 0 1rem;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 1rem;
+}
+
+th, td {
+    border-bottom: 1px solid #ddd;
+    padding: .5rem .75rem;
+    text-align: left;
+}
+
+th {
+    background: #f3f5f8;
+}
+
+.btn, button {
+    background: #1f3a5f;
+    color: #fff;
+    border: 0;
+    padding: .4rem .9rem;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 1rem;
+}
+
+.btn.danger, button.danger {
+    background: #b3261e;
+}
+
+label {
+    display: block;
+    margin: .75rem 0;
+}
+
+input, select, textarea {
+    display: block;
+    padding: .4rem;
+    width: 100%;
+    max-width: 420px;
+    font-size: 1rem;
+}
+
+.flash {
+    padding: .6rem 1rem;
+    margin: 1rem auto;
+    max-width: 1000px;
+    border-radius: 4px;
+}
+
+.flash.success {
+    background: #e3f4e5;
+}
+
+.flash.error {
+    background: #fbe4e2;
+}
+
+.flash.warning {
+    background: #fff4d6;
+}
