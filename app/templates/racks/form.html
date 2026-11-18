@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Rack{% endblock %}
+{% block content %}
+<h1>{{ 'Edit' if rack and rack.rack_id else 'New' }} rack</h1>
+{% if not locations %}<p>Create a location before adding a rack.</p>{% endif %}
+<form method="post">
+  <label>Location
+    <select name="location_id" required>
+      <option value="">Select a location</option>
+      {% for location in locations %}
+      <option value="{{ location.location_id }}" {% if rack and rack.location_id|string == location.location_id|string %}selected{% endif %}>{{ location.building }} - {{ location.room }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Rack label
+    <input name="rack_label" required value="{{ rack.rack_label if rack else '' }}">
+  </label>
+  <label>Total units
+    <input type="number" name="total_units" min="1" required value="{{ rack.total_units if rack else 42 }}">
+  </label>
+  <button {% if not locations %}disabled{% endif %}>Save</button>
+  <a href="{{ url_for('racks.list_racks') }}">Cancel</a>
+</form>
+{% endblock %}

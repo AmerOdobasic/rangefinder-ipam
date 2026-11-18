@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}VLAN{% endblock %}
+{% block content %}
+<h1>{{ 'Edit' if vlan and (vlan.vlan_id or vlan.original_vlan_id) else 'New' }} VLAN</h1>
+<form method="post">
+  <label>VLAN ID
+    <input type="number" name="vlan_id" min="1" max="4094" required value="{{ vlan.vlan_id if vlan else '' }}">
+  </label>
+  <label>VLAN name
+    <input name="vlan_name" required value="{{ vlan.vlan_name if vlan else '' }}">
+  </label>
+  <label>Description
+    <input name="description" value="{{ vlan.description if vlan else '' }}">
+  </label>
+  <button>Save</button>
+  <a href="{{ url_for('vlans.list_vlans') }}">Cancel</a>
+</form>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Device{% endblock %}
+{% block content %}
+<h1>{{ 'Edit' if device and device.device_id else 'New' }} device</h1>
+<form method="post">
+  <label>Hostname
+    <input name="hostname" required value="{{ device.hostname if device else '' }}">
+  </label>
+  <label>MAC address
+    <input name="mac_address" required maxlength="17" placeholder="00:11:22:33:44:55" value="{{ device.mac_address if device else '' }}">
+  </label>
+  <label>Device type
+    <input name="device_type" required maxlength="50" placeholder="Server, switch, router, etc." value="{{ device.device_type if device else '' }}">
+  </label>
+  <label>Rack units
+    <input type="number" name="rack_units" min="1" value="{{ device.rack_units if device and device.rack_units is not none else '' }}">
+  </label>
+  <label>Rack
+    <select name="rack_id">
+      <option value="">Not assigned</option>
+      {% for rack in racks %}
+      <option value="{{ rack.rack_id }}" {% if device and device.rack_id|string == rack.rack_id|string %}selected{% endif %}>{{ rack.building }} - {{ rack.room }} / {{ rack.rack_label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button>Save</button>
+  <a href="{{ url_for('devices.list_devices') }}">Cancel</a>
+</form>
+{% endblock %}

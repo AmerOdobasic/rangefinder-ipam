@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Devices{% endblock %}
+{% block content %}
+<h1>Devices</h1>
+{% if is_admin or is_engineer %}<a class="btn" href="{{ url_for('devices.create_device') }}">+ New device</a>{% endif %}
+<table>
+  <thead><tr><th>Hostname</th><th>MAC address</th><th>Type</th><th>Rack units</th><th>Rack / location</th>{% if is_admin or is_engineer %}<th>Actions</th>{% endif %}</tr></thead>
+  <tbody>
+  {% for device in devices %}
+    <tr>
+      <td>{{ device.hostname }}</td><td>{{ device.mac_address }}</td><td>{{ device.device_type }}</td><td>{{ device.rack_units if device.rack_units is not none else '-' }}</td>
+      <td>{% if device.rack_id %}{{ device.rack_label }} ({{ device.building }} - {{ device.room }}){% else %}-{% endif %}</td>
+      {% if is_admin or is_engineer %}<td>
+        <a class="btn" href="{{ url_for('devices.edit_device', device_id=device.device_id) }}">Edit</a>
+        {% if is_admin %}<form method="post" style="display:inline" action="{{ url_for('devices.delete_device', device_id=device.device_id) }}" onsubmit="return confirm('Delete this device? Its assigned IP addresses will be released.');"><button class="danger">Delete</button></form>{% endif %}
+      </td>{% endif %}
+    </tr>
+  {% else %}<tr><td colspan="6">No devices yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

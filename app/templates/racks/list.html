@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Racks{% endblock %}
+{% block content %}
+<h1>Racks</h1>
+{% if is_admin %}<a class="btn" href="{{ url_for('racks.create_rack') }}">+ New rack</a>{% endif %}
+<table>
+  <thead><tr><th>Building</th><th>Room</th><th>Rack</th><th>Total units</th>{% if is_admin %}<th>Actions</th>{% endif %}</tr></thead>
+  <tbody>
+  {% for rack in racks %}
+    <tr>
+      <td>{{ rack.building }}</td><td>{{ rack.room }}</td><td>{{ rack.rack_label }}</td><td>{{ rack.total_units }}</td>
+      {% if is_admin %}<td>
+        <a class="btn" href="{{ url_for('racks.edit_rack', rack_id=rack.rack_id) }}">Edit</a>
+        <form method="post" style="display:inline" action="{{ url_for('racks.delete_rack', rack_id=rack.rack_id) }}" onsubmit="return confirm('Delete this rack? Devices assigned to it will become unassigned.');">
+          <button class="danger">Delete</button>
+        </form>
+      </td>{% endif %}
+    </tr>
+  {% else %}<tr><td colspan="5">No racks yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}VLANs{% endblock %}
+{% block content %}
+<h1>VLANs</h1>
+{% if is_admin %}<a class="btn" href="{{ url_for('vlans.create_vlan') }}">+ New VLAN</a>{% endif %}
+<table>
+  <thead><tr><th>VLAN ID</th><th>Name</th><th>Description</th>{% if is_admin %}<th>Actions</th>{% endif %}</tr></thead>
+  <tbody>
+  {% for vlan in vlans %}
+    <tr>
+      <td>{{ vlan.vlan_id }}</td><td>{{ vlan.vlan_name }}</td><td>{{ vlan.description }}</td>
+      {% if is_admin %}<td>
+        <a class="btn" href="{{ url_for('vlans.edit_vlan', vlan_id=vlan.vlan_id) }}">Edit</a>
+        <form method="post" style="display:inline" action="{{ url_for('vlans.delete_vlan', vlan_id=vlan.vlan_id) }}" onsubmit="return confirm('Delete this VLAN?');">
+          <button class="danger">Delete</button>
+        </form>
+      </td>{% endif %}
+    </tr>
+  {% else %}<tr><td colspan="4">No VLANs yet.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% endblock %}
