@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, session, redirect, url_for, flash, current_app, abort
+from flask import Blueprint, render_template, request, session, redirect, url_for, flash, current_app, abort
+from werkzeug.security import check_password_hash
+from ..db import query_one
 
 bp = Blueprint("main", __name__)
 
@@ -16,8 +18,21 @@ def index():
     return render_template("index.html")
 
 
-@bp.route("/login")
+@bp.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "POST":
+        username = request.form["username"].strip()
+        password = request.form["password"]
+        user = query_one(
+            "SELECT username, password_hash, role FROM User_Account WHERE username = %s",
+            (username,),
+        )
+        if user and check_password_hash(user["password_hash"], password):
+            session.clear()
+            session["username"] = user["username"]
+            session["role"] = user["role"]
+            return redirect(url_for("main.index"))
+        flash("Invalid username and/or password...", "error")
     return render_template("login.html")
 
 

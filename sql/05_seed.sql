@@ -162,8 +162,8 @@ SET ip.status = 'assigned', ip.device_id = d.device_id
 WHERE ip.subnet_id = @sn_mgmt;
 
 
--- Users portion (3 users, the hashes are fake on purpose and not real passwords)
+-- Users portion 
 INSERT INTO User_Account (username, password_hash, role) VALUES
-    ('netadmin', 'FAKE_HASH_netadmin_not_a_real_hash', 'Network Administrator'),
-    ('syseng',   'FAKE_HASH_syseng_not_a_real_hash',   'Systems Engineer'),
-    ('auditor',  'FAKE_HASH_auditor_not_a_real_hash',  'Read-Only Auditor');
+    ('netadmin', 'scrypt:32768:8:1$LyCeODKDw7sPr65n$1c2715935dabe502ad7cfd30b3568904536bf985927c9002ca65d3a435199243afac60e706a2bfba6dc78b8fc92c1912e8645af86230dc806d938477e1c64c94', 'Network Administrator'),
+    ('syseng',   'scrypt:32768:8:1$rcmPfDaOIexwfTde$eddbfd4f7aaebd4ac14908d497ec6b8fa1888dca9109412c5b8fe4fffcfb5a46399f967e230a8afba61129b0d3615ecead75aa9e7b9fa3e65c113c4692611b3d',   'Systems Engineer'),
+    ('auditor',  'scrypt:32768:8:1$HM2yOIoEVL5AQ15x$01a88ce54883d07bbe0cac16d4ffb5127cb1e2d3e1b6abac82a07e575342ba2564b0ea4e77f5ff56c3aa3aa71192057f503e9127c9ea390c0201694baffdf427',  'Read-Only Auditor');
