@@ -15,7 +15,7 @@ DEV_ROLES = {
 def index():
     if "role" not in session:
         return redirect(url_for("main.login"))
-    return render_template("index.html")
+    return redirect(url_for("dashboard.show_dashboard"))
 
 
 @bp.route("/login", methods=["GET", "POST"])
