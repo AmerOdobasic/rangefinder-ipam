@@ -14,16 +14,16 @@
   <p>The CIDR cannot be changed because its IP rows already exist. Delete and recreate the subnet instead.</p>
   {% endif %}
   <label>VLAN
-    <select name="vlan_id">
-      <option value="">(none)</option>
+    <select name="vlan_id" required>
+      <option value="" disabled {{ 'selected' if not cur_vlan }}>Select a VLAN</option>
       {% for v in vlans %}
       <option value="{{ v.vlan_id }}" {{ 'selected' if cur_vlan|string == v.vlan_id|string }}>{{ v.vlan_id }} - {{ v.vlan_name }}</option>
       {% endfor %}
     </select>
   </label>
   <label>Location
-    <select name="location_id">
-      <option value="">(none)</option>
+    <select name="location_id" required>
+      <option value="" disabled {{ 'selected' if not cur_loc }}>Select a location</option>
       {% for l in locations %}
       <option value="{{ l.location_id }}" {{ 'selected' if cur_loc|string == l.location_id|string }}>{{ l.building }} {{ l.room }}</option>
       {% endfor %}

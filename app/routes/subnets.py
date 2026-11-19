@@ -12,10 +12,15 @@ ENGINEER = "Systems Engineer"
 CIDR_RE = re.compile(r"^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})$")
 
 
-def opt_int(name):
-    """Form field -> int, or None when blank. Raises ValueError on junk."""
-    value = request.form.get(name, "").strip()
-    return int(value) if value else None
+def pick_ids():
+    """VLAN and location are both required (NOT NULL columns).
+    Returns (vlan_id, location_id, error_message)."""
+    try:
+        vlan_id = int(request.form.get("vlan_id", "").strip())
+        location_id = int(request.form.get("location_id", "").strip())
+    except ValueError:
+        return None, None, "VLAN and location are required. Pick one from each list."
+    return vlan_id, location_id, None
 
 
 def lookups():
@@ -62,10 +67,8 @@ def create_subnet():
     if request.method == "POST":
         cidr = request.form.get("cidr_block", "").strip()
         problem = validate_cidr(cidr) if cidr else "CIDR block is required."
-        try:
-            vlan_id, location_id = opt_int("vlan_id"), opt_int("location_id")
-        except ValueError:
-            problem = problem or "VLAN and location must be picked from the lists."
+        vlan_id, location_id, id_problem = pick_ids()
+        problem = problem or id_problem
         if problem:
             flash(problem, "error")
             return render_form(None, request.form)
@@ -101,11 +104,9 @@ def edit_subnet(subnet_id):
     if subnet is None:
         abort(404)
     if request.method == "POST":
-        # The CIDR itself is not editable: its IP rows were generated from it.
-        try:
-            vlan_id, location_id = opt_int("vlan_id"), opt_int("location_id")
-        except ValueError:
-            flash("VLAN and location must be picked from the lists.", "error")
+        vlan_id, location_id, problem = pick_ids()
+        if problem:
+            flash(problem, "error")
             return render_form(subnet, request.form)
         try:
             execute("UPDATE Subnet SET vlan_id = %s, location_id = %s WHERE subnet_id = %s",
