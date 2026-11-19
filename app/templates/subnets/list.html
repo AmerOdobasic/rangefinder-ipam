@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Subnets{% endblock %}
+{% block content %}
+{% set can_ips = role in ['Network Administrator', 'Systems Engineer'] %}
+<h1>Subnets</h1>
+{% if is_admin %}<a class="btn" href="{{ url_for('subnets.create_subnet') }}">+ New subnet</a>{% endif %}
+<table>
+  <thead>
+    <tr><th>CIDR</th><th>VLAN</th><th>Location</th><th>Assigned / Total</th><th>% available</th><th>Actions</th></tr>
+  </thead>
+  <tbody>
+  {% for s in subnets %}
+    <tr>
+      <td><a href="{{ url_for('ips.list_ips', subnet_id=s.subnet_id) }}">{{ s.cidr_block }}</a></td>
+      <td>{% if s.vlan_id %}{{ s.vlan_id }} - {{ s.vlan_name }}{% endif %}</td>
+      <td>{% if s.building %}{{ s.building }} {{ s.room }}{% endif %}</td>
+      <td>{{ s.assigned_ips or 0 }} / {{ s.total_ips or 0 }}</td>
+      <td>{{ s.percent_available if s.percent_available is not none else 'n/a' }}</td>
+      <td>
+        <a class="btn" href="{{ url_for('ips.list_ips', subnet_id=s.subnet_id) }}">View IPs</a>
+        {% if can_ips %}<a class="btn" href="{{ url_for('ips.request_ip', subnet_id=s.subnet_id) }}">Request IP</a>{% endif %}
+        {% if is_admin %}
+        <a class="btn" href="{{ url_for('subnets.edit_subnet', subnet_id=s.subnet_id) }}">Edit</a>
+        <form method="post" style="display:inline"
+              action="{{ url_for('subnets.delete_subnet', subnet_id=s.subnet_id) }}"
+              onsubmit="return confirm('Delete this subnet and its IP rows?');">
+          <button class="danger">Delete</button>
+        </form>
+        {% endif %}
+      </td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6">No subnets yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

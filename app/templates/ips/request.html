@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Request IP{% endblock %}
+{% block content %}
+<h1>Request a static IP</h1>
+<form method="post">
+  <label>Subnet
+    <select name="subnet_id">
+      {% for s in subnets %}
+      <option value="{{ s.subnet_id }}" {{ 'selected' if form.get('subnet_id')|string == s.subnet_id|string }}>{{ s.cidr_block }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Hostname
+    <input name="hostname" required value="{{ form.get('hostname', '') }}">
+  </label>
+  <label>MAC address
+    <input name="mac" required placeholder="AA:BB:CC:DD:EE:01" value="{{ form.get('mac', '') }}">
+  </label>
+  <label>Device type
+    <input name="device_type" placeholder="Server" value="{{ form.get('device_type', '') }}">
+  </label>
+  <label>Rack (optional)
+    <select name="rack_id">
+      <option value="">(not rack-mounted)</option>
+      {% for r in racks %}
+      <option value="{{ r.rack_id }}" {{ 'selected' if form.get('rack_id')|string == r.rack_id|string }}>{{ r.rack_label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Rack units
+    <input type="number" name="rack_units" min="1" value="{{ form.get('rack_units', '') }}">
+  </label>
+  <p>If the MAC address already belongs to a device, that device is reused. The lowest free IP in the subnet is assigned.</p>
+  <button>Assign next free IP</button>
+  <a href="{{ url_for('ips.list_ips') }}">Cancel</a>
+</form>
+{% endblock %}

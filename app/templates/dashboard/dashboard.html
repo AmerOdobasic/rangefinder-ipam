@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+{% macro bar(pct) %}<div class="bar"><div style="width: {{ pct or 0 }}%"></div></div>{% endmacro %}
+<h2>Subnet utilization</h2>
+<table><tr><th>Subnet</th><th>Total</th><th>Assigned</th><th>Available</th><th>% available</th></tr>
+{% for s in subnets %}<tr><td><a href="{{ url_for('ips.list_ips', subnet_id=s.subnet_id) }}">{{ s.cidr_block }}</a></td>
+<td>{{ s.total_ips }}</td><td>{{ s.assigned_ips }}</td><td>{{ s.available_ips }}</td>
+<td>{{ s.percent_available if s.percent_available is not none else 'n/a' }}{{ bar(s.percent_available) }}</td></tr>
+{% else %}<tr><td colspan="5">No subnets.</td></tr>{% endfor %}</table>
+<h2>VLAN utilization</h2>
+<table><tr><th>VLAN</th><th>Name</th><th>Total</th><th>Assigned</th><th>Available</th><th>% available</th></tr>
+{% for v in vlans %}<tr><td>{{ v.vlan_id }}</td><td>{{ v.vlan_name }}</td><td>{{ v.total_ips }}</td><td>{{ v.assigned_ips }}</td><td>{{ v.available_ips }}</td>
+<td>{{ v.percent_available if v.percent_available is not none else 'n/a' }}{{ bar(v.percent_available) }}</td></tr>
+{% else %}<tr><td colspan="6">No VLANs.</td></tr>{% endfor %}</table>
+<h2>Rack space</h2>
+<table><tr><th>Rack</th><th>Total U</th><th>Used U</th><th>Free U</th></tr>
+{% for r in racks %}<tr><td>{{ r.rack_label }}</td><td>{{ r.total_units }}</td><td>{{ r.used_units }}</td><td>{{ r.free_units }}</td></tr>
+{% else %}<tr><td colspan="4">No racks.</td></tr>{% endfor %}</table>
+<h2>Rack space by location</h2>
+<table><tr><th>Building</th><th>Room</th><th>Total U</th><th>Used U</th><th>Free U</th></tr>
+{% for l in locations %}<tr><td>{{ l.building }}</td><td>{{ l.room }}</td><td>{{ l.total_location_units }}</td><td>{{ l.used_location_units }}</td><td>{{ l.free_location_units }}</td></tr>
+{% else %}<tr><td colspan="5">No locations.</td></tr>{% endfor %}</table>
+<style>.bar{background:#e5e7eb;height:6px;border-radius:3px;margin-top:3px;min-width:80px}.bar div{background:#2563eb;height:6px;border-radius:3px}</style>
+{% endblock %}

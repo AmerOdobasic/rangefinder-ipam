@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Release IPs{% endblock %}
+{% block content %}
+<h1>Release a device's IP addresses</h1>
+<form method="post" onsubmit="return confirm('Release every IP held by this device?');">
+  <label>Device
+    <select name="device_id">
+      {% for d in devices %}
+      <option value="{{ d.device_id }}">{{ d.hostname }} ({{ d.ip_count }} IP{{ '' if d.ip_count == 1 else 's' }})</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button>Release IPs</button>
+  <a href="{{ url_for('ips.list_ips') }}">Cancel</a>
+</form>
+{% endblock %}

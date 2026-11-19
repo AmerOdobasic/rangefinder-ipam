@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}IP Addresses{% endblock %}
+{% block content %}
+{% set can_ips = role in ['Network Administrator', 'Systems Engineer'] %}
+<h1>IP addresses</h1>
+<form method="get">
+  <label>Subnet
+    <select name="subnet_id" onchange="this.form.submit()">
+      {% for s in subnets %}
+      <option value="{{ s.subnet_id }}" {{ 'selected' if s.subnet_id == subnet_id }}>{{ s.cidr_block }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Status
+    <select name="status" onchange="this.form.submit()">
+      <option value="">all</option>
+      {% for st in statuses %}<option value="{{ st }}" {{ 'selected' if st == status }}>{{ st }}</option>{% endfor %}
+    </select>
+  </label>
+  <noscript><button>Filter</button></noscript>
+</form>
+{% if can_ips %}
+<p><a class="btn" href="{{ url_for('ips.request_ip', subnet_id=subnet_id) }}">Request IP</a>
+   <a class="btn" href="{{ url_for('ips.release_ips') }}">Release a device's IPs</a></p>
+{% endif %}
+{% if summary %}
+<p>{{ summary.assigned_ips }} assigned, {{ summary.available_ips }} available, {{ summary.total_ips }} total
+   ({{ summary.percent_available if summary.percent_available is not none else 'n/a' }}% available).</p>
+{% endif %}
+<table>
+  <thead><tr><th>IP address</th><th>Status</th><th>Device</th><th>MAC</th></tr></thead>
+  <tbody>
+  {% for i in ips %}
+    <tr><td>{{ i.ip_address }}</td><td>{{ i.status }}</td><td>{{ i.hostname or '' }}</td><td>{{ i.mac_address or '' }}</td></tr>
+  {% else %}
+    <tr><td colspan="4">No IP addresses to show.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Subnet{% endblock %}
+{% block content %}
+{% set cur_vlan = (form.get('vlan_id') if form else None) or (subnet.vlan_id if subnet else '') %}
+{% set cur_loc = (form.get('location_id') if form else None) or (subnet.location_id if subnet else '') %}
+<h1>{{ 'Edit subnet ' ~ subnet.cidr_block if subnet else 'New subnet' }}</h1>
+<form method="post">
+  {% if not subnet %}
+  <label>CIDR block
+    <input name="cidr_block" required placeholder="10.3.0.0/24" value="{{ form.get('cidr_block', '') }}">
+  </label>
+  <p>Prefix /16 to /30. The IP address rows are generated automatically.</p>
+  {% else %}
+  <p>The CIDR cannot be changed because its IP rows already exist. Delete and recreate the subnet instead.</p>
+  {% endif %}
+  <label>VLAN
+    <select name="vlan_id">
+      <option value="">(none)</option>
+      {% for v in vlans %}
+      <option value="{{ v.vlan_id }}" {{ 'selected' if cur_vlan|string == v.vlan_id|string }}>{{ v.vlan_id }} - {{ v.vlan_name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Location
+    <select name="location_id">
+      <option value="">(none)</option>
+      {% for l in locations %}
+      <option value="{{ l.location_id }}" {{ 'selected' if cur_loc|string == l.location_id|string }}>{{ l.building }} {{ l.room }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button>Save</button>
+  <a href="{{ url_for('subnets.list_subnets') }}">Cancel</a>
+</form>
+{% endblock %}
