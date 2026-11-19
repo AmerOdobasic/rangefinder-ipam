@@ -56,6 +56,8 @@ def request_ip():
             problem = "Hostname and MAC address are required."
         elif not problem and not MAC_RE.match(mac):
             problem = "MAC address must look like AA:BB:CC:DD:EE:01."
+        elif not problem and not device_type:
+            problem = "Device type is required."
         elif not problem and rack_id is not None and (rack_units is None or rack_units < 1):
             problem = "Rack units (1 or more) are required when a rack is chosen."
         if problem:

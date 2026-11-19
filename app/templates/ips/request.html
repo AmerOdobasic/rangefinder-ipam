@@ -17,7 +17,7 @@
     <input name="mac" required placeholder="AA:BB:CC:DD:EE:01" value="{{ form.get('mac', '') }}">
   </label>
   <label>Device type
-    <input name="device_type" placeholder="Server" value="{{ form.get('device_type', '') }}">
+    <input name="device_type" required placeholder="Server" value="{{ form.get('device_type', '') }}">
   </label>
   <label>Rack (optional)
     <select name="rack_id">
