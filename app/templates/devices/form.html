@@ -22,6 +22,7 @@
       <option value="{{ rack.rack_id }}" {% if device and device.rack_id|string == rack.rack_id|string %}selected{% endif %}>{{ rack.building }} - {{ rack.room }} / {{ rack.rack_label }}</option>
       {% endfor %}
     </select>
+    <small>Moving a device to a rack in a different building/room automatically releases its assigned IP addresses back to "available" (handled by the <code>trg_device_move_release_ips</code> trigger).</small>
   </label>
   <button>Save</button>
   <a href="{{ url_for('devices.list_devices') }}">Cancel</a>
