@@ -52,3 +52,17 @@ The seed uses session variables (like `@loc_windsor`), so run `05_seed.sql` only
 - `git pull` before you start and before you push. Remember to commit small, with a clear message for them to let everyone else know what you've done
 - Any time `01_schema.sql` gets changed, keep a quick note of what changed so we can drop it straight into the Step 4 "Changes from Previous Submission" section.
 - Make sure that `.env` contains nothing thats actually sensitive
+
+## Running the GUI (Step 5)
+
+1. Rebuild the database (this wipes any data created in the GUI):
+
+   `mysql -u root -p -e "source build_all.sql"`
+2. Copy `.env.example` to `.env`. Set `SECRET_KEY` using:
+
+   `python -c "import secrets; print(secrets.token_hex(32))"`
+   and set the `DB_*_PASSWORD` values from `sql/07_roles.sql`.
+3. Create and activate a virtual environment, then install dependencies:
+   `python -m venv venv`, activate it, then `pip install -r requirements.txt`
+4. Start the app: `flask --app app run`, then open http://127.0.0.1:5000
+5. Demo logins: see Section 6 of the Step 5 document (netadmin, syseng, auditor).

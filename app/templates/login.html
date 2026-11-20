@@ -7,12 +7,4 @@
   <label>Password <input name="password" type="password" required></label>
   <button type="submit">Log in</button>
 </form>
-{% if config.DEBUG %}
-  <p>Dev shortcuts:</p>
-  <ul>
-    <li><a href="/dev-login/admin">Network Administrator</a></li>
-    <li><a href="/dev-login/engineer">Systems Engineer</a></li>
-    <li><a href="/dev-login/auditor">Read-Only Auditor</a></li>
-  </ul>
-{% endif %}
 {% endblock %}
